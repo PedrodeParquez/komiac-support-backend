@@ -34,6 +34,7 @@ func main() {
 	}
 
 	usersRepo := postgres.NewUsersRepo(store.DB)
+	ticketsRepo := postgres.NewTicketsRepo(store.DB)
 
 	if cfg.SeedAdmin {
 		hash, err := auth.HashPassword(cfg.SeedPass)
@@ -62,8 +63,17 @@ func main() {
 		}
 	}
 
+	if err := postgres.EnsureSeedTickets(ctx, store, postgres.SeedTicketsConfig{
+		Enabled:    cfg.SeedTickets,
+		PerUser:    cfg.SeedTicketsPerUser,
+		AdminLogin: cfg.SeedLogin,
+		UserLogin:  cfg.SeedUserLogin,
+	}); err != nil {
+		log.Fatal(err)
+	}
+
 	r := gin.Default()
-	routes.Register(r, cfg, usersRepo)
+	routes.Register(r, cfg, usersRepo, ticketsRepo)
 
 	log.Println("listening on :8080")
 	if err := r.Run(":8080"); err != nil {
