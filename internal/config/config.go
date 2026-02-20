@@ -33,6 +33,9 @@ type Config struct {
 	SeedUserPass  string
 	SeedUserFirst string
 	SeedUserLast  string
+
+	SeedTickets        bool
+	SeedTicketsPerUser int
 }
 
 func Load() Config {
@@ -66,6 +69,9 @@ func Load() Config {
 		SeedUserPass:  getenv("SEED_USER_PASSWORD", "user12345"),
 		SeedUserFirst: getenv("SEED_USER_FIRST", "Иван"),
 		SeedUserLast:  getenv("SEED_USER_LAST", "Петров"),
+
+		SeedTickets:        getenv("SEED_TICKETS", "true") == "true",
+		SeedTicketsPerUser: mustInt(getenv("SEED_TICKETS_PER_USER", "6")),
 	}
 }
 
