@@ -26,6 +26,17 @@ type Config struct {
 	SeedPass  string
 	SeedFirst string
 	SeedLast  string
+	SeedPhone string
+	SeedDept  string
+
+	SeedAdmin2 bool
+	SeedLogin2 string
+	SeedEmail2 string
+	SeedPass2  string
+	SeedFirst2 string
+	SeedLast2  string
+	SeedPhone2 string
+	SeedDept2  string
 
 	SeedUser      bool
 	SeedUserLogin string
@@ -33,9 +44,13 @@ type Config struct {
 	SeedUserPass  string
 	SeedUserFirst string
 	SeedUserLast  string
+	SeedUserPhone string
+	SeedUserDept  string
 
 	SeedTickets        bool
 	SeedTicketsPerUser int
+
+	SeedDepts bool
 }
 
 func Load() Config {
@@ -62,6 +77,17 @@ func Load() Config {
 		SeedPass:  getenv("SEED_ADMIN_PASSWORD", "admin12345"),
 		SeedFirst: getenv("SEED_ADMIN_FIRST", "Марина"),
 		SeedLast:  getenv("SEED_ADMIN_LAST", "Шпегель"),
+		SeedPhone: getenv("SEED_ADMIN_PHONE", "+7 (495) 123-45-67"),
+		SeedDept:  getenv("SEED_ADMIN_DEPT", ""),
+
+		SeedAdmin2: getenv("SEED_ADMIN2", "false") == "true",
+		SeedLogin2: getenv("SEED_ADMIN2_LOGIN", "support"),
+		SeedEmail2: getenv("SEED_ADMIN2_EMAIL", "support@local.test"),
+		SeedPass2:  getenv("SEED_ADMIN2_PASSWORD", "support12345"),
+		SeedFirst2: getenv("SEED_ADMIN2_FIRST", "Сергей"),
+		SeedLast2:  getenv("SEED_ADMIN2_LAST", "Иванов"),
+		SeedPhone2: getenv("SEED_ADMIN2_PHONE", "+7 (495) 999-88-88"),
+		SeedDept2:  getenv("SEED_ADMIN2_DEPT", "IT Support"),
 
 		SeedUser:      getenv("SEED_USER", "true") == "true",
 		SeedUserLogin: getenv("SEED_USER_LOGIN", "user1"),
@@ -69,9 +95,13 @@ func Load() Config {
 		SeedUserPass:  getenv("SEED_USER_PASSWORD", "user12345"),
 		SeedUserFirst: getenv("SEED_USER_FIRST", "Иван"),
 		SeedUserLast:  getenv("SEED_USER_LAST", "Петров"),
+		SeedUserPhone: getenv("SEED_USER_PHONE", "+7 (495) 999-88-77"),
+		SeedUserDept:  getenv("SEED_USER_DEPT", ""),
 
 		SeedTickets:        getenv("SEED_TICKETS", "true") == "true",
 		SeedTicketsPerUser: mustInt(getenv("SEED_TICKETS_PER_USER", "6")),
+
+		SeedDepts: getenv("SEED_DEPTS", "true") == "true",
 	}
 }
 

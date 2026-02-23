@@ -5,6 +5,8 @@ import (
 
 	authapi "komiac-support-backend/internal/api/auth"
 	ticketsapi "komiac-support-backend/internal/api/tickets"
+	usersapi "komiac-support-backend/internal/api/users" // <-- добавили
+
 	"komiac-support-backend/internal/config"
 	"komiac-support-backend/internal/http-server/middleware"
 	postgres "komiac-support-backend/internal/storage"
@@ -15,6 +17,7 @@ func Register(r *gin.Engine, cfg config.Config, users *postgres.UsersRepo, ticke
 
 	authH := authapi.New(cfg, users)
 	ticketsH := ticketsapi.New(tickets)
+	usersH := usersapi.New(users)
 
 	g := r.Group("/auth")
 	{
@@ -28,9 +31,14 @@ func Register(r *gin.Engine, cfg config.Config, users *postgres.UsersRepo, ticke
 		)
 	}
 
-	t := r.Group("/tickets",
-		middleware.RequireAuth(middleware.AuthConfig{AccessSecret: cfg.AccessSecret}),
-	)
+	authMW := middleware.RequireAuth(middleware.AuthConfig{AccessSecret: cfg.AccessSecret})
+
+	u := r.Group("/users", authMW)
+	{
+		u.GET("/support", usersH.ListSupportUsers)
+	}
+
+	t := r.Group("/tickets", authMW)
 	{
 		t.GET("", ticketsH.ListTickets)
 		t.GET("/my", ticketsH.ListMyTickets)
@@ -38,5 +46,8 @@ func Register(r *gin.Engine, cfg config.Config, users *postgres.UsersRepo, ticke
 		t.POST("", ticketsH.CreateTicket)
 		t.POST("/:id/assign", ticketsH.AssignTicket)
 		t.POST("/:id/messages", ticketsH.AddMessage)
+		t.GET("/:id/messages", ticketsH.ListMessages)
+		t.POST("/:id/reply", ticketsH.ReplyTicket)
+		t.POST("/:id/close", ticketsH.CloseTicket)
 	}
 }

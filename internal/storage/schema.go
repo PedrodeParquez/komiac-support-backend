@@ -24,6 +24,7 @@ func EnsureSchema(ctx context.Context, s *Storage) error {
 			first_name VARCHAR(50) NOT NULL,
 			middle_name VARCHAR(50) NULL,
 			last_name VARCHAR(50) NOT NULL,
+			phone VARCHAR(20) NULL,
 			role VARCHAR(10) NOT NULL CHECK (role IN ('user', 'support')),
 			dept_id INTEGER NULL REFERENCES depts(id) ON DELETE SET NULL,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -32,6 +33,8 @@ func EnsureSchema(ctx context.Context, s *Storage) error {
 		`,
 		`CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);`,
 		`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);`,
+
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20) NULL;`,
 
 		`
 		CREATE TABLE IF NOT EXISTS tickets (
@@ -45,6 +48,8 @@ func EnsureSchema(ctx context.Context, s *Storage) error {
 				CHECK (priority IN ('low', 'medium', 'high')),
 			user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 			taken_by INTEGER NULL REFERENCES users(id) ON DELETE SET NULL,
+			support_reply TEXT NULL,
+			replied_at TIMESTAMP NULL,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			resolved_at TIMESTAMP NULL,
@@ -55,6 +60,9 @@ func EnsureSchema(ctx context.Context, s *Storage) error {
 		`CREATE INDEX IF NOT EXISTS idx_tickets_taken_by ON tickets(taken_by);`,
 		`CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);`,
 		`CREATE INDEX IF NOT EXISTS idx_tickets_created_at ON tickets(created_at);`,
+
+		`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS support_reply TEXT NULL;`,
+		`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS replied_at TIMESTAMP NULL;`,
 
 		`
 		CREATE TABLE IF NOT EXISTS ticket_messages (

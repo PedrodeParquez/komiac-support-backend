@@ -33,6 +33,12 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if err := postgres.EnsureSeedDepts(ctx, store, postgres.SeedDeptsConfig{
+		Enabled: cfg.SeedDepts,
+	}); err != nil {
+		log.Fatal(err)
+	}
+
 	usersRepo := postgres.NewUsersRepo(store.DB)
 	ticketsRepo := postgres.NewTicketsRepo(store.DB)
 
@@ -41,7 +47,17 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		if err := usersRepo.CreateSeedSupportIfNotExists(ctx, cfg.SeedLogin, cfg.SeedEmail, hash, cfg.SeedFirst, cfg.SeedLast); err != nil {
+		if err := usersRepo.CreateSeedSupportIfNotExists(ctx, cfg.SeedLogin, cfg.SeedEmail, hash, cfg.SeedFirst, cfg.SeedLast, cfg.SeedPhone, cfg.SeedDept); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	if cfg.SeedAdmin2 {
+		hash, err := auth.HashPassword(cfg.SeedPass2)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := usersRepo.CreateSeedSupportIfNotExists(ctx, cfg.SeedLogin2, cfg.SeedEmail2, hash, cfg.SeedFirst2, cfg.SeedLast2, cfg.SeedPhone2, cfg.SeedDept2); err != nil {
 			log.Fatal(err)
 		}
 	}
@@ -58,18 +74,11 @@ func main() {
 			hash,
 			cfg.SeedUserFirst,
 			cfg.SeedUserLast,
+			cfg.SeedUserPhone,
+			cfg.SeedUserDept,
 		); err != nil {
 			log.Fatal(err)
 		}
-	}
-
-	if err := postgres.EnsureSeedTickets(ctx, store, postgres.SeedTicketsConfig{
-		Enabled:    cfg.SeedTickets,
-		PerUser:    cfg.SeedTicketsPerUser,
-		AdminLogin: cfg.SeedLogin,
-		UserLogin:  cfg.SeedUserLogin,
-	}); err != nil {
-		log.Fatal(err)
 	}
 
 	r := gin.Default()

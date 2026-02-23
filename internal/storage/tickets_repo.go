@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-
 	"strings"
 	"time"
 )
@@ -118,10 +117,12 @@ SELECT
   t.priority,
   t.status,
   t.taken_by,
+  t.support_reply,
+  t.replied_at,
   u.first_name,
   u.last_name,
   d.name,
-  d.phone,
+  u.phone,
   u2.first_name,
   u2.last_name
 FROM tickets t
@@ -140,11 +141,13 @@ LIMIT 1;
 
 		takenBy sql.NullInt64
 
+		supportReply sql.NullString
+		repliedAt    sql.NullTime
+
 		uFn, uLn  sql.NullString
 		deptName  sql.NullString
-		deptPhone sql.NullString
-
-		aFn, aLn sql.NullString
+		userPhone sql.NullString
+		aFn, aLn  sql.NullString
 	)
 
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
@@ -156,10 +159,12 @@ LIMIT 1;
 		&t.Priority,
 		&t.Status,
 		&takenBy,
+		&supportReply,
+		&repliedAt,
 		&uFn,
 		&uLn,
 		&deptName,
-		&deptPhone,
+		&userPhone,
 		&aFn,
 		&aLn,
 	)
@@ -171,6 +176,14 @@ LIMIT 1;
 	t.Topic = t.Title
 	t.Message = desc
 
+	if supportReply.Valid {
+		t.SupportReply = supportReply.String
+	}
+	if repliedAt.Valid {
+		s := repliedAt.Time.Format("15:04 02.01.2006")
+		t.RepliedAt = &s
+	}
+
 	fromName := strings.TrimSpace(strings.TrimSpace(uFn.String) + " " + strings.TrimSpace(uLn.String))
 	if fromName == "" {
 		fromName = "—"
@@ -181,8 +194,8 @@ LIMIT 1;
 		s := deptName.String
 		t.Dept = &s
 	}
-	if deptPhone.Valid {
-		s := deptPhone.String
+	if userPhone.Valid {
+		s := userPhone.String
 		t.Phone = &s
 	}
 
@@ -298,4 +311,86 @@ RETURNING id;
 	}
 
 	return r.GetTicket(ctx, id)
+}
+
+func (r *TicketsRepo) ListMessages(ctx context.Context, ticketID int64) ([]TicketMessage, error) {
+	rows, err := r.db.QueryContext(ctx, `
+SELECT
+  m.id,
+  m.author_id,
+  COALESCE(u.first_name,'') as fn,
+  COALESCE(u.last_name,'') as ln,
+  m.message,
+  m.created_at
+FROM ticket_messages m
+JOIN users u ON u.id = m.author_id
+WHERE m.ticket_id = $1
+ORDER BY m.created_at ASC, m.id ASC;
+`, ticketID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []TicketMessage
+	for rows.Next() {
+		var (
+			id       int64
+			authorID int64
+			fn       string
+			ln       string
+			msg      string
+			created  time.Time
+		)
+		if err := rows.Scan(&id, &authorID, &fn, &ln, &msg, &created); err != nil {
+			return nil, err
+		}
+
+		author := strings.TrimSpace(strings.TrimSpace(fn) + " " + strings.TrimSpace(ln))
+		if author == "" {
+			author = "—"
+		}
+
+		out = append(out, TicketMessage{
+			ID:        id,
+			AuthorID:  authorID,
+			Author:    author,
+			Message:   msg,
+			CreatedAt: created.Format("15:04 02.01.2006"),
+		})
+	}
+	return out, rows.Err()
+}
+
+func (r *TicketsRepo) CloseTicket(ctx context.Context, id int64) (TicketDetail, error) {
+	_, err := r.db.ExecContext(ctx, `
+UPDATE tickets
+SET status = 'closed',
+    closed_at = NOW(),
+    updated_at = NOW()
+WHERE id = $1
+  AND status = 'in_progress';
+`, id)
+	if err != nil {
+		return TicketDetail{}, err
+	}
+	return r.GetTicket(ctx, id)
+}
+
+func (r *TicketsRepo) SaveSupportReply(ctx context.Context, ticketID int64, assigneeID int64, reply string) (TicketDetail, error) {
+	_, err := r.db.ExecContext(ctx, `
+UPDATE tickets
+SET taken_by = $1,
+    support_reply = $2,
+    replied_at = NOW(),
+    status = 'in_progress',
+    updated_at = NOW()
+WHERE id = $3
+  AND status IN ('open','in_progress');
+`, assigneeID, reply, ticketID)
+	if err != nil {
+		return TicketDetail{}, err
+	}
+
+	return r.GetTicket(ctx, ticketID)
 }

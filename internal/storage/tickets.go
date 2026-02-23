@@ -24,12 +24,13 @@ type TicketDetail struct {
 	Status       string  `json:"status"`
 	AssigneeID   *int64  `json:"assigneeId,omitempty"`
 	AssigneeName *string `json:"assigneeName,omitempty"`
-
-	Topic    string  `json:"topic"`
-	FromName string  `json:"fromName"`
-	Dept     *string `json:"dept,omitempty"`
-	Phone    *string `json:"phone,omitempty"`
-	Message  string  `json:"message"`
+	SupportReply string  `json:"supportReply"`
+	RepliedAt    *string `json:"repliedAt,omitempty"`
+	Topic        string  `json:"topic"`
+	FromName     string  `json:"fromName"`
+	Dept         *string `json:"dept,omitempty"`
+	Phone        *string `json:"phone,omitempty"`
+	Message      string  `json:"message"`
 }
 
 type AddMessageParams struct {
@@ -43,4 +44,12 @@ type CreateTicketParams struct {
 	Description string
 	Priority    string
 	UserID      int64
+}
+
+type TicketMessage struct {
+	ID        int64  `json:"id"`
+	AuthorID  int64  `json:"authorId"`
+	Author    string `json:"author"`
+	Message   string `json:"message"`
+	CreatedAt string `json:"createdAt"`
 }

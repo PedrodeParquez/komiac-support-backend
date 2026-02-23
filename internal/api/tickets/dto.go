@@ -13,3 +13,8 @@ type CreateTicketRequest struct {
 	Description string `json:"description"`
 	Priority    string `json:"priority"`
 }
+
+type ReplyTicketRequest struct {
+	AssigneeID int64  `json:"assigneeId"`
+	Reply      string `json:"reply"`
+}

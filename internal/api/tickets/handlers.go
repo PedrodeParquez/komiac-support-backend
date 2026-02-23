@@ -25,7 +25,6 @@ func uidFromCtx(c *gin.Context) (int64, bool) {
 		return 0, false
 	}
 
-	// В middleware uid кладётся как int, поэтому поддержим оба варианта
 	switch x := v.(type) {
 	case int:
 		return int64(x), true
@@ -218,4 +217,82 @@ func (h *Handlers) CreateTicket(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"ticket": t})
+}
+
+func (h *Handlers) ListMessages(c *gin.Context) {
+	if roleFromCtx(c) != "support" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+		return
+	}
+
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad id"})
+		return
+	}
+
+	items, err := h.tickets.ListMessages(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		return
+	}
+	if items == nil {
+		items = make([]storage.TicketMessage, 0)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"messages": items})
+}
+
+func (h *Handlers) ReplyTicket(c *gin.Context) {
+	if roleFromCtx(c) != "support" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+		return
+	}
+
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad id"})
+		return
+	}
+
+	var req ReplyTicketRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad body"})
+		return
+	}
+
+	req.Reply = strings.TrimSpace(req.Reply)
+	if req.AssigneeID <= 0 || req.Reply == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "assigneeId and reply required"})
+		return
+	}
+
+	t, err := h.tickets.SaveSupportReply(c.Request.Context(), id, req.AssigneeID, req.Reply)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ticket": t})
+}
+
+func (h *Handlers) CloseTicket(c *gin.Context) {
+	if roleFromCtx(c) != "support" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+		return
+	}
+
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad id"})
+		return
+	}
+
+	t, err := h.tickets.CloseTicket(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ticket": t})
 }

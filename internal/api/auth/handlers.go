@@ -22,6 +22,22 @@ func New(cfg config.Config, users *postgres.UsersRepo) *Handlers {
 	return &Handlers{Cfg: cfg, Users: users}
 }
 
+func uidFromCtx(c *gin.Context) (int64, bool) {
+	v, ok := c.Get("uid")
+	if !ok {
+		return 0, false
+	}
+
+	switch x := v.(type) {
+	case int:
+		return int64(x), true
+	case int64:
+		return x, true
+	default:
+		return 0, false
+	}
+}
+
 func (h *Handlers) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -75,6 +91,9 @@ func (h *Handlers) Login(c *gin.Context) {
 	resp.User.Role = u.Role
 	resp.User.Username = u.Username
 	resp.User.Email = u.Email
+	resp.User.Phone = u.Phone
+	resp.User.DeptID = u.DeptID
+	resp.User.DeptName = u.DeptName
 
 	c.JSON(http.StatusOK, resp)
 }
@@ -107,10 +126,18 @@ func (h *Handlers) Logout(c *gin.Context) {
 }
 
 func (h *Handlers) Me(c *gin.Context) {
-	uid := c.GetInt("uid")
+	uid, ok := uidFromCtx(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
 
 	u, err := h.Users.GetByID(c.Request.Context(), uid)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
 		return
 	}

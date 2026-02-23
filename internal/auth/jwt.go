@@ -14,12 +14,12 @@ const (
 )
 
 type Claims struct {
-	UID  int  `json:"uid"`
-	Role Role `json:"role"`
+	UID  int64 `json:"uid"`
+	Role Role  `json:"role"`
 	jwt.RegisteredClaims
 }
 
-func Sign(uid int, role Role, secret string, ttl time.Duration) (string, error) {
+func Sign(uid int64, role Role, secret string, ttl time.Duration) (string, error) {
 	now := time.Now()
 	claims := Claims{
 		UID:  uid,
