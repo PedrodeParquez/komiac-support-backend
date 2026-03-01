@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"log"
+	"os/signal"
+	"syscall"
 
 	"github.com/gin-gonic/gin"
 
@@ -17,11 +19,9 @@ func main() {
 	if cfg.DatabaseURL == "" {
 		log.Fatal("DATABASE_URL is empty")
 	}
-	if cfg.AccessSecret == "" || cfg.RefreshSecret == "" {
-		log.Fatal("JWT secrets are empty")
-	}
 
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
 	store, err := postgres.New(ctx, cfg.DatabaseURL)
 	if err != nil {
@@ -42,45 +42,6 @@ func main() {
 	usersRepo := postgres.NewUsersRepo(store.DB)
 	ticketsRepo := postgres.NewTicketsRepo(store.DB)
 
-	if cfg.SeedAdmin {
-		hash, err := auth.HashPassword(cfg.SeedPass)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if err := usersRepo.CreateSeedSupportIfNotExists(ctx, cfg.SeedLogin, cfg.SeedEmail, hash, cfg.SeedFirst, cfg.SeedLast, cfg.SeedPhone, cfg.SeedDept); err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	if cfg.SeedAdmin2 {
-		hash, err := auth.HashPassword(cfg.SeedPass2)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if err := usersRepo.CreateSeedSupportIfNotExists(ctx, cfg.SeedLogin2, cfg.SeedEmail2, hash, cfg.SeedFirst2, cfg.SeedLast2, cfg.SeedPhone2, cfg.SeedDept2); err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	if cfg.SeedUser {
-		hash, err := auth.HashPassword(cfg.SeedUserPass)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if err := usersRepo.CreateSeedUserIfNotExists(
-			ctx,
-			cfg.SeedUserLogin,
-			cfg.SeedUserEmail,
-			hash,
-			cfg.SeedUserFirst,
-			cfg.SeedUserLast,
-			cfg.SeedUserPhone,
-			cfg.SeedUserDept,
-		); err != nil {
-			log.Fatal(err)
-		}
-	}
-
 	r := gin.Default()
 	routes.Register(r, cfg, usersRepo, ticketsRepo)
 
@@ -88,4 +49,48 @@ func main() {
 	if err := r.Run(":8080"); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func seedUsers(ctx context.Context, cfg config.Config, usersRepo *postgres.UsersRepo) error {
+	if cfg.SeedAdmin.Enabled {
+		hash, err := auth.HashPassword(cfg.SeedAdmin.Password)
+		if err != nil {
+			return err
+		}
+
+		if err := usersRepo.CreateSeedSupportIfNotExists(
+			ctx,
+			cfg.SeedAdmin.Login,
+			cfg.SeedAdmin.Email,
+			hash,
+			cfg.SeedAdmin.First,
+			cfg.SeedAdmin.Last,
+			cfg.SeedAdmin.Phone,
+			cfg.SeedAdmin.Dept,
+		); err != nil {
+			return err
+		}
+	}
+
+	if cfg.SeedUser.Enabled {
+		hash, err := auth.HashPassword(cfg.SeedUser.Password)
+		if err != nil {
+			return err
+		}
+
+		if err := usersRepo.CreateSeedUserIfNotExists(
+			ctx,
+			cfg.SeedUser.Login,
+			cfg.SeedUser.Email,
+			hash,
+			cfg.SeedUser.First,
+			cfg.SeedUser.Last,
+			cfg.SeedUser.Phone,
+			cfg.SeedUser.Dept,
+		); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

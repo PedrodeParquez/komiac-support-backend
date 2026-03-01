@@ -83,6 +83,37 @@ func (h *Handlers) ListMyTickets(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"tickets": items})
 }
 
+func (h *Handlers) GetMyTicket(c *gin.Context) {
+	if roleFromCtx(c) != "user" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+		return
+	}
+
+	uid, ok := uidFromCtx(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad id"})
+		return
+	}
+
+	t, err := h.tickets.GetMyTicket(c.Request.Context(), uid, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ticket": t})
+}
+
 func (h *Handlers) GetTicket(c *gin.Context) {
 	if roleFromCtx(c) != "support" {
 		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})

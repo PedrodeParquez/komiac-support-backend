@@ -13,9 +13,6 @@ type CORSConfig struct {
 func CORS(cfg CORSConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		origin := cfg.Origin
-		if origin == "" {
-			origin = "http://localhost:5173"
-		}
 
 		c.Header("Access-Control-Allow-Origin", origin)
 		c.Header("Vary", "Origin")

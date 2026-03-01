@@ -8,6 +8,17 @@ import (
 	"github.com/joho/godotenv"
 )
 
+type SeedAccount struct {
+	Enabled  bool
+	Login    string
+	Email    string
+	Password string
+	First    string
+	Last     string
+	Phone    string
+	Dept     string
+}
+
 type Config struct {
 	DatabaseURL string
 
@@ -20,100 +31,95 @@ type Config struct {
 	AccessTTL     time.Duration
 	RefreshTTL    time.Duration
 
-	SeedAdmin bool
-	SeedLogin string
-	SeedEmail string
-	SeedPass  string
-	SeedFirst string
-	SeedLast  string
-	SeedPhone string
-	SeedDept  string
-
-	SeedAdmin2 bool
-	SeedLogin2 string
-	SeedEmail2 string
-	SeedPass2  string
-	SeedFirst2 string
-	SeedLast2  string
-	SeedPhone2 string
-	SeedDept2  string
-
-	SeedUser      bool
-	SeedUserLogin string
-	SeedUserEmail string
-	SeedUserPass  string
-	SeedUserFirst string
-	SeedUserLast  string
-	SeedUserPhone string
-	SeedUserDept  string
-
-	SeedTickets        bool
-	SeedTicketsPerUser int
-
+	SeedAdmin SeedAccount
+	SeedUser  SeedAccount
 	SeedDepts bool
 }
 
 func Load() Config {
 	_ = godotenv.Load()
 
-	accessMin := mustInt(getenv("JWT_ACCESS_TTL_MIN", "15"))
-	refreshDays := mustInt(getenv("JWT_REFRESH_TTL_DAYS", "14"))
-
 	return Config{
-		DatabaseURL: getenv("DATABASE_URL", ""),
+		DatabaseURL: mustEnv("DATABASE_URL"),
 
-		CorsOrigin:   getenv("CORS_ORIGIN", "http://localhost:5173"),
-		CookieSecure: getenv("COOKIE_SECURE", "false") == "true",
-		CookieDomain: getenv("COOKIE_DOMAIN", ""),
+		CorsOrigin:   env("CORS_ORIGIN", ""),
+		CookieDomain: env("COOKIE_DOMAIN", ""),
+		CookieSecure: envBool("COOKIE_SECURE", false),
 
-		AccessSecret:  getenv("JWT_ACCESS_SECRET", ""),
-		RefreshSecret: getenv("JWT_REFRESH_SECRET", ""),
-		AccessTTL:     time.Duration(accessMin) * time.Minute,
-		RefreshTTL:    time.Duration(refreshDays) * 24 * time.Hour,
+		AccessSecret:  mustEnv("JWT_ACCESS_SECRET"),
+		RefreshSecret: mustEnv("JWT_REFRESH_SECRET"),
 
-		SeedAdmin: getenv("SEED_ADMIN", "true") == "true",
-		SeedLogin: getenv("SEED_ADMIN_LOGIN", "admin"),
-		SeedEmail: getenv("SEED_ADMIN_EMAIL", "admin@local.test"),
-		SeedPass:  getenv("SEED_ADMIN_PASSWORD", "admin12345"),
-		SeedFirst: getenv("SEED_ADMIN_FIRST", "Марина"),
-		SeedLast:  getenv("SEED_ADMIN_LAST", "Шпегель"),
-		SeedPhone: getenv("SEED_ADMIN_PHONE", "+7 (495) 123-45-67"),
-		SeedDept:  getenv("SEED_ADMIN_DEPT", ""),
+		AccessTTL:  envDurationMinutes("JWT_ACCESS_TTL_MIN", 15),
+		RefreshTTL: envDurationDays("JWT_REFRESH_TTL_DAYS", 30),
 
-		SeedAdmin2: getenv("SEED_ADMIN2", "false") == "true",
-		SeedLogin2: getenv("SEED_ADMIN2_LOGIN", "support"),
-		SeedEmail2: getenv("SEED_ADMIN2_EMAIL", "support@local.test"),
-		SeedPass2:  getenv("SEED_ADMIN2_PASSWORD", "support12345"),
-		SeedFirst2: getenv("SEED_ADMIN2_FIRST", "Сергей"),
-		SeedLast2:  getenv("SEED_ADMIN2_LAST", "Иванов"),
-		SeedPhone2: getenv("SEED_ADMIN2_PHONE", "+7 (495) 999-88-88"),
-		SeedDept2:  getenv("SEED_ADMIN2_DEPT", "IT Support"),
-
-		SeedUser:      getenv("SEED_USER", "true") == "true",
-		SeedUserLogin: getenv("SEED_USER_LOGIN", "user1"),
-		SeedUserEmail: getenv("SEED_USER_EMAIL", "user1@local.test"),
-		SeedUserPass:  getenv("SEED_USER_PASSWORD", "user12345"),
-		SeedUserFirst: getenv("SEED_USER_FIRST", "Иван"),
-		SeedUserLast:  getenv("SEED_USER_LAST", "Петров"),
-		SeedUserPhone: getenv("SEED_USER_PHONE", "+7 (495) 999-88-77"),
-		SeedUserDept:  getenv("SEED_USER_DEPT", ""),
-
-		SeedTickets:        getenv("SEED_TICKETS", "true") == "true",
-		SeedTicketsPerUser: mustInt(getenv("SEED_TICKETS_PER_USER", "6")),
-
-		SeedDepts: getenv("SEED_DEPTS", "true") == "true",
+		SeedDepts: envBool("SEED_DEPTS", true),
+		SeedAdmin: SeedAccount{
+			Enabled:  envBool("SEED_ADMIN", true),
+			Login:    env("SEED_ADMIN_LOGIN", ""),
+			Email:    env("SEED_ADMIN_EMAIL", ""),
+			Password: env("SEED_ADMIN_PASSWORD", ""),
+			First:    env("SEED_ADMIN_FIRST", ""),
+			Last:     env("SEED_ADMIN_LAST", ""),
+			Phone:    env("SEED_ADMIN_PHONE", ""),
+			Dept:     env("SEED_ADMIN_DEPT", ""),
+		},
+		SeedUser: SeedAccount{
+			Enabled:  envBool("SEED_USER", false),
+			Login:    env("SEED_USER_LOGIN", ""),
+			Email:    env("SEED_USER_EMAIL", ""),
+			Password: env("SEED_USER_PASSWORD", ""),
+			First:    env("SEED_USER_FIRST", ""),
+			Last:     env("SEED_USER_LAST", ""),
+			Phone:    env("SEED_USER_PHONE", ""),
+			Dept:     env("SEED_USER_DEPT", ""),
+		},
 	}
 }
 
-func getenv(k, def string) string {
-	v := os.Getenv(k)
-	if v == "" {
-		return def
+func env(k, def string) string {
+	if v, ok := os.LookupEnv(k); ok {
+		return v
 	}
+	return def
+}
+
+func mustEnv(k string) string {
+	v := os.Getenv(k)
 	return v
 }
 
-func mustInt(s string) int {
-	n, _ := strconv.Atoi(s)
-	return n
+func envBool(k string, def bool) bool {
+	v, ok := os.LookupEnv(k)
+	if !ok || v == "" {
+		return def
+	}
+	b, err := strconv.ParseBool(v)
+	if err != nil {
+		return def
+	}
+	return b
+}
+
+func envDurationMinutes(k string, defMin int) time.Duration {
+	v, ok := os.LookupEnv(k)
+	if !ok || v == "" {
+		return time.Duration(defMin) * time.Minute
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n <= 0 {
+		return time.Duration(defMin) * time.Minute
+	}
+	return time.Duration(n) * time.Minute
+}
+
+func envDurationDays(k string, defDays int) time.Duration {
+	v, ok := os.LookupEnv(k)
+	if !ok || v == "" {
+		return time.Duration(defDays) * 24 * time.Hour
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n <= 0 {
+		return time.Duration(defDays) * 24 * time.Hour
+	}
+	return time.Duration(n) * 24 * time.Hour
 }

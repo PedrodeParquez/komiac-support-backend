@@ -5,7 +5,7 @@ import (
 
 	authapi "komiac-support-backend/internal/api/auth"
 	ticketsapi "komiac-support-backend/internal/api/tickets"
-	usersapi "komiac-support-backend/internal/api/users" // <-- добавили
+	usersapi "komiac-support-backend/internal/api/users"
 
 	"komiac-support-backend/internal/config"
 	"komiac-support-backend/internal/http-server/middleware"
@@ -42,6 +42,7 @@ func Register(r *gin.Engine, cfg config.Config, users *postgres.UsersRepo, ticke
 	{
 		t.GET("", ticketsH.ListTickets)
 		t.GET("/my", ticketsH.ListMyTickets)
+		t.GET("/my/:id", ticketsH.GetMyTicket)
 		t.GET("/:id", ticketsH.GetTicket)
 		t.POST("", ticketsH.CreateTicket)
 		t.POST("/:id/assign", ticketsH.AssignTicket)

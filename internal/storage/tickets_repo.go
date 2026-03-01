@@ -394,3 +394,109 @@ WHERE id = $3
 
 	return r.GetTicket(ctx, ticketID)
 }
+
+func (r *TicketsRepo) GetMyTicket(ctx context.Context, userID int64, id int64) (TicketDetail, error) {
+	query := `
+SELECT
+  t.id,
+  t.ticket_number,
+  t.title,
+  t.description,
+  t.created_at,
+  t.priority,
+  t.status,
+  t.taken_by,
+  t.support_reply,
+  t.replied_at,
+  u.first_name,
+  u.last_name,
+  d.name,
+  u.phone,
+  u2.first_name,
+  u2.last_name
+FROM tickets t
+JOIN users u ON u.id = t.user_id
+LEFT JOIN depts d ON d.id = u.dept_id
+LEFT JOIN users u2 ON u2.id = t.taken_by
+WHERE t.id = $1 AND t.user_id = $2
+LIMIT 1;
+`
+
+	var (
+		t TicketDetail
+
+		created time.Time
+		desc    string
+
+		takenBy sql.NullInt64
+
+		supportReply sql.NullString
+		repliedAt    sql.NullTime
+
+		uFn, uLn  sql.NullString
+		deptName  sql.NullString
+		userPhone sql.NullString
+		aFn, aLn  sql.NullString
+	)
+
+	err := r.db.QueryRowContext(ctx, query, id, userID).Scan(
+		&t.ID,
+		&t.TicketNumber,
+		&t.Title,
+		&desc,
+		&created,
+		&t.Priority,
+		&t.Status,
+		&takenBy,
+		&supportReply,
+		&repliedAt,
+		&uFn,
+		&uLn,
+		&deptName,
+		&userPhone,
+		&aFn,
+		&aLn,
+	)
+	if err != nil {
+		return TicketDetail{}, err
+	}
+
+	t.CreatedAt = created.Format("15:04 02.01.2006")
+	t.Topic = t.Title
+	t.Message = desc
+
+	if supportReply.Valid {
+		t.SupportReply = supportReply.String
+	}
+	if repliedAt.Valid {
+		s := repliedAt.Time.Format("15:04 02.01.2006")
+		t.RepliedAt = &s
+	}
+
+	fromName := strings.TrimSpace(strings.TrimSpace(uFn.String) + " " + strings.TrimSpace(uLn.String))
+	if fromName == "" {
+		fromName = "—"
+	}
+	t.FromName = fromName
+
+	if deptName.Valid {
+		s := deptName.String
+		t.Dept = &s
+	}
+	if userPhone.Valid {
+		s := userPhone.String
+		t.Phone = &s
+	}
+
+	if takenBy.Valid {
+		x := takenBy.Int64
+		t.AssigneeID = &x
+
+		name := strings.TrimSpace(strings.TrimSpace(aFn.String) + " " + strings.TrimSpace(aLn.String))
+		if name != "" {
+			t.AssigneeName = &name
+		}
+	}
+
+	return t, nil
+}
